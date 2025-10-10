@@ -1,42 +1,38 @@
-import tkinter as tk
 import RPi.GPIO as GPIO
+import tkinter as tk
 
-# GPIO setup
 GPIO.setmode(GPIO.BCM)
-led_pins = {"LED 1": 17, "LED 2": 27, "LED 3": 22}
+led_pins = {'Green': 17, 'Yellow': 27, 'Red': 22}
 
-# Setup LEDs with PWM
-pwm_objects = {}
-for name, pin in led_pins.items():
+pwm_leds = {}
+for color, pin in led_pins.items():
     GPIO.setup(pin, GPIO.OUT)
-    pwm = GPIO.PWM(pin, 100)  # 100 Hz frequency
-    pwm.start(0)  # Start with 0% duty cycle (off)
-    pwm_objects[name] = pwm
+    pwm_leds[color] = GPIO.PWM(pin, 1000)  
+    pwm_leds[color].start(0)
 
-# Functions
-def set_brightness(led_name, value):
-    duty_cycle = int(value)  # slider gives string, convert to int
-    pwm_objects[led_name].ChangeDutyCycle(duty_cycle)
+window = tk.Tk()
+window.title("LED Brightness Control")
 
-def exit_program():
-    for pwm in pwm_objects.values():
+tk.Label(window, text="Adjust LED Brightness:", font=('Arial', 14)).pack(pady=10)
+
+def update_led(color, intensity):
+    gamma = 2.2  
+    corrected = (float(intensity) / 100) ** gamma * 100
+    pwm_leds[color].ChangeDutyCycle(corrected)
+
+def exit_app():
+    for pwm in pwm_leds.values():
         pwm.stop()
     GPIO.cleanup()
     window.destroy()
 
-# GUI setup
-window = tk.Tk()
-window.title("LED Brightness Controller")
+for color in led_pins.keys():
+    frame = tk.Frame(window)
+    frame.pack(pady=5)
+    tk.Label(frame, text=f"{color} LED", width=10, anchor='w', font=('Arial', 12)).pack(side='left')
+    tk.Scale(frame, from_=0, to=100, orient='horizontal', length=200,
+             command=lambda value, c=color: update_led(c, value)).pack(side='left')
 
-# Create sliders for each LED
-for name in led_pins.keys():
-    tk.Label(window, text=name).pack()
-    slider = tk.Scale(
-        window, from_=0, to=100, orient="horizontal",
-        command=lambda val, n=name: set_brightness(n, val)
-    )
-    slider.pack()
-
-tk.Button(window, text="Exit", command=exit_program).pack()
+tk.Button(window, text="Exit", command=exit_app, bg='red', fg='white', width=10).pack(pady=15)
 
 window.mainloop()
